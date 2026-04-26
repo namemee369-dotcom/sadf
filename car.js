@@ -62,9 +62,18 @@ function init(event) {
     event.npc.getStats().setMaxHealth(1000);
     event.npc.getStats().setCombatRegen(0);
     event.npc.getStats().setHealthRegen(0);
-    var carData = getCarData(event.npc);
+
+    var npc = event.npc;
+    var carData = getCarData(npc);
+
     if (carData.owner) {
-        event.npc.getDisplay().setName(CAR_BASE_NAME + " (" + carData.owner + ")");
+        npc.getDisplay().setName(CAR_BASE_NAME + " (" + carData.owner + ")");
+
+        // Check if owner is in the lost car list
+        var world = npc.getWorld();
+        if (isPlayerInLostCarList(world, carData.owner)) {
+            npc.setPosition(2435, 159, 874);
+        }
     }
 }
 
@@ -615,4 +624,18 @@ function removeRestrictedItems(player) {
             }
         }
     }
+}
+
+// ========== World StoredData: Lost Car List Helper ==========
+
+function isPlayerInLostCarList(world, playerName) {
+    var wdata = world.getStoreddata();
+    if (!wdata.has("lostCarPlayers")) return false;
+    try {
+        var list = JSON.parse(wdata.get("lostCarPlayers"));
+        for (var i = 0; i < list.length; i++) {
+            if (list[i] === playerName) return true;
+        }
+    } catch(e) {}
+    return false;
 }
