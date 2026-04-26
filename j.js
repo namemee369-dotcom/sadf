@@ -46,7 +46,7 @@ function getLostCarStatus(player) {
 
 function showCarPurchaseGUI(player, api) {
     var guiWidth = 280;
-    var guiHeight = 80 + (CARS.length * 30) + 50; // extra space for teleport button
+    var guiHeight = 80 + (CARS.length * 30) + 50;
 
     guiRef = api.createCustomGui(guiWidth, guiHeight, 0, false, player);
     guiRef.addLabel(1, "§l§n🚗 Car Dealership", guiWidth / 2, -30, 1.0, 1.0);
@@ -65,11 +65,9 @@ function showCarPurchaseGUI(player, api) {
 
     // ===== Teleport Car Mode Toggle =====
     var lostCar = getLostCarStatus(player);
-    var teleportStatusColor = lostCar ? "§a" : "§c";
-    var teleportStatusText = lostCar ? "ON" : "OFF";
 
-    guiRef.addLabel(300, "§eTeleport Car Mode: " + teleportStatusColor + teleportStatusText, 20, yPos - 5, 0.9, 0.9);
-    guiRef.addButton(301, lostCar ? "§cDisable" : "§aEnable", guiWidth - 70, yPos - 7, 60, 16);
+    guiRef.addLabel(300, "§eTeleport Car Mode:", 20, yPos - 5, 0.9, 0.9);
+    guiRef.addButton(301, lostCar ? "§aEnabled" : "§cDisabled", guiWidth - 80, yPos - 7, 70, 16);
 
     yPos -= 30;
 
@@ -88,30 +86,21 @@ function customGuiButton(event) {
 
     if (!lastBlock || !lastPlayer) return;
 
-    // Close button
     if (buttonId === 999) {
         player.closeGui();
         return;
     }
 
-    // Teleport Car Mode toggle
     if (buttonId === 301) {
         var current = getLostCarStatus(player);
         var newVal = !current;
         player.getStoreddata().put("lostCar", newVal ? "true" : "false");
 
-        var statusMsg = newVal
-            ? "§aTeleport Car Mode §lENABLED§r§a. Your car will teleport to you!"
-            : "§cTeleport Car Mode §lDISABLED§r§c.";
-        player.message(statusMsg);
-
-        // Refresh GUI to reflect new state
         player.closeGui();
         showCarPurchaseGUI(player, api);
         return;
     }
 
-    // Car purchase buttons (200-299)
     if (buttonId >= 200 && buttonId < 300) {
         var carIndex = buttonId - 200;
         if (carIndex >= 0 && carIndex < CARS.length) {
