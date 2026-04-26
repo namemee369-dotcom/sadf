@@ -35,11 +35,18 @@ function interact(event) {
     showCarPurchaseGUI(player, api);
 }
 
+// ========== Helper: Get lostCar status ==========
+
+function getLostCarStatus(player) {
+    var val = player.getStoreddata().get("lostCar");
+    return val === "true";
+}
+
 // ========== Car Purchase GUI ==========
 
 function showCarPurchaseGUI(player, api) {
     var guiWidth = 280;
-    var guiHeight = 80 + (CARS.length * 30);
+    var guiHeight = 80 + (CARS.length * 30) + 50; // extra space for teleport button
 
     guiRef = api.createCustomGui(guiWidth, guiHeight, 0, false, player);
     guiRef.addLabel(1, "§l§n🚗 Car Dealership", guiWidth / 2, -30, 1.0, 1.0);
@@ -50,14 +57,21 @@ function showCarPurchaseGUI(player, api) {
         var labelId = 100 + i;
         var buttonId = 200 + i;
 
-        // Car name and price
         guiRef.addLabel(labelId, "§f" + car.name + " §7- §a" + car.price + "x §f" + car.priceItem, 20, yPos, 0.9, 0.9);
-
-        // Purchase button
         guiRef.addButton(buttonId, "§aBuy", guiWidth - 50, yPos - 2, 40, 16);
 
         yPos -= 30;
     }
+
+    // ===== Teleport Car Mode Toggle =====
+    var lostCar = getLostCarStatus(player);
+    var teleportStatusColor = lostCar ? "§a" : "§c";
+    var teleportStatusText = lostCar ? "ON" : "OFF";
+
+    guiRef.addLabel(300, "§eTeleport Car Mode: " + teleportStatusColor + teleportStatusText, 20, yPos - 5, 0.9, 0.9);
+    guiRef.addButton(301, lostCar ? "§cDisable" : "§aEnable", guiWidth - 70, yPos - 7, 60, 16);
+
+    yPos -= 30;
 
     // Close button
     guiRef.addButton(999, "§cClose", guiWidth / 2 - 25, yPos - 20, 50, 16);
@@ -80,6 +94,23 @@ function customGuiButton(event) {
         return;
     }
 
+    // Teleport Car Mode toggle
+    if (buttonId === 301) {
+        var current = getLostCarStatus(player);
+        var newVal = !current;
+        player.getStoreddata().put("lostCar", newVal ? "true" : "false");
+
+        var statusMsg = newVal
+            ? "§aTeleport Car Mode §lENABLED§r§a. Your car will teleport to you!"
+            : "§cTeleport Car Mode §lDISABLED§r§c.";
+        player.message(statusMsg);
+
+        // Refresh GUI to reflect new state
+        player.closeGui();
+        showCarPurchaseGUI(player, api);
+        return;
+    }
+
     // Car purchase buttons (200-299)
     if (buttonId >= 200 && buttonId < 300) {
         var carIndex = buttonId - 200;
@@ -95,7 +126,6 @@ function customGuiButton(event) {
 function purchaseCar(player, block, carConfig, api) {
     var playerName = player.getName();
 
-    // Check if player has enough currency
     var inv = player.getInventory().getItems();
     var totalHave = 0;
     for (var i = 0; i < inv.length; i++) {
@@ -109,7 +139,6 @@ function purchaseCar(player, block, carConfig, api) {
         return;
     }
 
-    // Remove currency from inventory
     var toRemove = carConfig.price;
     for (var i = 0; i < inv.length; i++) {
         if (inv[i] && inv[i].getName() === carConfig.priceItem && toRemove > 0) {
@@ -119,7 +148,6 @@ function purchaseCar(player, block, carConfig, api) {
         }
     }
 
-    // Spawn car at player location
     var spawnX = player.getX();
     var spawnY = player.getY() + 3;
     var spawnZ = player.getZ();
@@ -127,7 +155,6 @@ function purchaseCar(player, block, carConfig, api) {
     var world = block.getWorld();
     var spawnedCar = world.spawnClone(spawnX, spawnY, spawnZ, carConfig.tab, carConfig.name);
 
-    // Find and register the spawned car as owned by this player
     if (spawnedCar) {
         registerCarOwner(spawnedCar, playerName, carConfig.price, carConfig.priceItem);
         player.message("§a✓ Car purchased! Your §f" + carConfig.name + " §ahas spawned.");
@@ -149,12 +176,11 @@ function registerCarOwner(carNpc, playerName, pricePaid, priceItem) {
         pricePaid: pricePaid
     };
     carNpc.getStoreddata().put("carData", JSON.stringify(carData));
-    // Initialize fuel to 0
     carNpc.getStoreddata().put("fuel", "0");
 }
 
 // ========== Give Flight Control Stick ==========
- 
+
 function giveFlightControl(player, api) {
     var nbt = api.stringToNbt(JSON.stringify({
         id: "minecraft:stick",
@@ -171,4 +197,3 @@ function customGuiClosed(event) {
     lastBlock = null;
     lastPlayer = null;
 }
-
