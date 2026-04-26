@@ -1,13 +1,9 @@
 // === Car Purchase Block Script ===
 
-// Range to search for spawned cars
 var SEARCH_RANGE = 5;
-
-// Storage key so each player only triggers once per session
 var PURCHASE_TAG = "carPurchaseTriggered";
 
 // ========== CONFIGURABLE CARS ==========
-// Format: { name: "NPC Name", tab: tabNumber, price: amount, priceItem: "item:id" }
 var CARS = [
     { name: "FC1", tab: 6, price: 3, priceItem: "coins:emerald_coin" }
     // Add more cars here:
@@ -15,74 +11,72 @@ var CARS = [
     // { name: "Speedster", tab: 8, price: 10, priceItem: "minecraft:diamond" }
 ];
 
+// ========== Layout Constants ==========
+var GUI_WIDTH        = 280;
+var TELEPORT_BTN_X   = 210;
+var TELEPORT_BTN_W   = 70;
+var TELEPORT_BTN_H   = 16;
+
 // ========== GUI State ==========
-var guiRef = null;
-var lastBlock = null;
-var lastPlayer = null;
-var lastAPI = null;
+var guiRef       = null;
+var lastBlock    = null;
+var lastPlayer   = null;
+var lastAPI      = null;
+var teleportBtnY = 0;
+
+// ========== Safe Update ==========
+function safeUpdate(gui) {
+    if (!gui) return;
+    try { gui.update(); } catch(e) {}
+}
 
 // ========== Block Interaction ==========
-
 function interact(event) {
-    var block = event.block;
-    var player = event.player;
-    var api = event.API;
-
-    lastBlock = block;
-    lastPlayer = player;
-    lastAPI = api;
-
-    showCarPurchaseGUI(player, api);
+    lastBlock  = event.block;
+    lastPlayer = event.player;
+    lastAPI    = event.API;
+    showCarPurchaseGUI(lastPlayer, lastAPI);
 }
 
 // ========== Helper: Get lostCar status ==========
-
 function getLostCarStatus(player) {
     var val = player.getStoreddata().get("lostCar");
     return val === "true";
 }
 
 // ========== Car Purchase GUI ==========
-
 function showCarPurchaseGUI(player, api) {
-    var guiWidth = 280;
     var guiHeight = 80 + (CARS.length * 30) + 50;
 
-    guiRef = api.createCustomGui(guiWidth, guiHeight, 0, false, player);
-    guiRef.addLabel(1, "§l§n🚗 Car Dealership", guiWidth / 2, -30, 1.0, 1.0);
+    guiRef = api.createCustomGui(GUI_WIDTH, guiHeight, 0, false, player);
+    guiRef.addLabel(1, "§l§n🚗 Car Dealership", GUI_WIDTH / 2, -30, 1.0, 1.0);
 
     var yPos = -10;
     for (var i = 0; i < CARS.length; i++) {
         var car = CARS[i];
-        var labelId = 100 + i;
-        var buttonId = 200 + i;
-
-        guiRef.addLabel(labelId, "§f" + car.name + " §7- §a" + car.price + "x §f" + car.priceItem, 20, yPos, 0.9, 0.9);
-        guiRef.addButton(buttonId, "§aBuy", guiWidth - 50, yPos - 2, 40, 16);
-
+        guiRef.addLabel(100 + i, "§f" + car.name + " §7- §a" + car.price + "x §f" + car.priceItem, 20, yPos, 0.9, 0.9);
+        guiRef.addButton(200 + i, "§aBuy", GUI_WIDTH - 50, yPos - 2, 40, 16);
         yPos -= 30;
     }
 
     // ===== Teleport Car Mode Toggle =====
     var lostCar = getLostCarStatus(player);
-
+    teleportBtnY = yPos - 7;
     guiRef.addLabel(300, "§eTeleport Car Mode:", 20, yPos - 5, 0.9, 0.9);
-    guiRef.addButton(301, lostCar ? "§aEnabled" : "§cDisabled", guiWidth - 80, yPos - 7, 70, 16);
+    guiRef.addButton(301, lostCar ? "§aEnabled" : "§cDisabled", TELEPORT_BTN_X, teleportBtnY, TELEPORT_BTN_W, TELEPORT_BTN_H);
 
     yPos -= 30;
 
-    // Close button
-    guiRef.addButton(999, "§cClose", guiWidth / 2 - 25, yPos - 20, 50, 16);
+    guiRef.addButton(999, "§cClose", GUI_WIDTH / 2 - 25, yPos - 20, 50, 16);
 
     player.showCustomGui(guiRef);
 }
 
 // ========== Button Handler ==========
-
 function customGuiButton(event) {
-    var player = event.player;
+    var player   = event.player;
     var buttonId = event.buttonId;
-    var api = event.API;
+    var api      = event.API;
 
     if (!lastBlock || !lastPlayer) return;
 
@@ -93,7 +87,7 @@ function customGuiButton(event) {
 
     if (buttonId === 301) {
         var current = getLostCarStatus(player);
-        var newVal = !current;
+        var newVal  = !current;
         player.getStoreddata().put("lostCar", newVal ? "true" : "false");
 
         var statusMsg = newVal
@@ -101,8 +95,9 @@ function customGuiButton(event) {
             : "§cTeleport Car Mode §lDISABLED§r§c.";
         player.message(statusMsg);
 
-        player.closeGui();
-        showCarPurchaseGUI(player, api);
+        try { guiRef.removeComponent(301); } catch(e) {}
+        guiRef.addButton(301, newVal ? "§aEnabled" : "§cDisabled", TELEPORT_BTN_X, teleportBtnY, TELEPORT_BTN_W, TELEPORT_BTN_H);
+        safeUpdate(guiRef);
         return;
     }
 
@@ -116,11 +111,10 @@ function customGuiButton(event) {
 }
 
 // ========== Purchase Logic ==========
-
 function purchaseCar(player, block, carConfig, api) {
     var playerName = player.getName();
 
-    var inv = player.getInventory().getItems();
+    var inv      = player.getInventory().getItems();
     var totalHave = 0;
     for (var i = 0; i < inv.length; i++) {
         if (inv[i] && inv[i].getName() === carConfig.priceItem) {
@@ -146,7 +140,7 @@ function purchaseCar(player, block, carConfig, api) {
     var spawnY = player.getY() + 3;
     var spawnZ = player.getZ();
 
-    var world = block.getWorld();
+    var world      = block.getWorld();
     var spawnedCar = world.spawnClone(spawnX, spawnY, spawnZ, carConfig.tab, carConfig.name);
 
     if (spawnedCar) {
@@ -162,7 +156,6 @@ function purchaseCar(player, block, carConfig, api) {
 }
 
 // ========== Car Registration ==========
-
 function registerCarOwner(carNpc, playerName, pricePaid, priceItem) {
     var carData = {
         owner: playerName,
@@ -174,7 +167,6 @@ function registerCarOwner(carNpc, playerName, pricePaid, priceItem) {
 }
 
 // ========== Give Flight Control Stick ==========
-
 function giveFlightControl(player, api) {
     var nbt = api.stringToNbt(JSON.stringify({
         id: "minecraft:stick",
@@ -185,9 +177,8 @@ function giveFlightControl(player, api) {
 }
 
 // ========== GUI Closed ==========
-
 function customGuiClosed(event) {
-    guiRef = null;
-    lastBlock = null;
+    guiRef     = null;
+    lastBlock  = null;
     lastPlayer = null;
 }
