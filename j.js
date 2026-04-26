@@ -96,6 +96,11 @@ function customGuiButton(event) {
         var newVal = !current;
         player.getStoreddata().put("lostCar", newVal ? "true" : "false");
 
+        var statusMsg = newVal
+            ? "§aTeleport Car Mode §lENABLED§r§a. Your car will teleport to you!"
+            : "§cTeleport Car Mode §lDISABLED§r§c.";
+        player.message(statusMsg);
+
         player.closeGui();
         showCarPurchaseGUI(player, api);
         return;
